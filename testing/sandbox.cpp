@@ -58,7 +58,7 @@ void poisson_solver( fk::vector<prec> const &source, fk::vector<prec> &phi, fk::
                         + source[(i+1)*(degree+1)+q] * ( 1.0 - lgwt[0][q] ) );
         }
     }
-        
+    
     // Set the Matrix //
     
     // Diagonal Entries //
