@@ -31,7 +31,12 @@ using prec = float;
 
 using namespace asgard;
 
-void poisson_solver( fk::vector<prec> const &source, fk::vector<prec> &phi, fk::vector<prec> &E, int degree, int N_elements, double x_min, double x_max, double phi_min, double phi_max )
+enum class poisson_bc
+{
+    dirichlet, periodic
+};
+
+void poisson_solver( fk::vector<prec> const &source, fk::vector<prec> &phi, fk::vector<prec> &E, int degree, int N_elements, double x_min, double x_max, double phi_min, double phi_max, poisson_bc bc )
 {
     
     // Solving: - phi_xx = source Using Linear Finite Elements
@@ -43,6 +48,22 @@ void poisson_solver( fk::vector<prec> const &source, fk::vector<prec> &phi, fk::
     auto const lgwt = legendre_weights( degree+1, -1.0, 1.0, true );
     
     int N_nodes = N_elements - 1;
+
+    // Average the Source Vector (if Periodic) //
+    
+    double ave_source = 0.0;
+    
+    if ( bc == poisson_bc::periodic )
+    {
+        for ( int i = 0; i < N_elements; i++ )
+        {
+            for ( int q = 0; q < degree+1; q++ )
+            {
+                ave_source += 0.5 * dx * lgwt[1][q] * source[i*(degree+1)+q];
+            }
+        }
+        ave_source /= ( x_max - x_min );
+    }
     
     // Set the Source Vector //
     
@@ -55,7 +76,8 @@ void poisson_solver( fk::vector<prec> const &source, fk::vector<prec> &phi, fk::
         {
             b[i] += 0.25 * dx * lgwt[1][q]
                     * (   source[(i  )*(degree+1)+q] * ( 1.0 + lgwt[0][q] )
-                        + source[(i+1)*(degree+1)+q] * ( 1.0 - lgwt[0][q] ) );
+                        + source[(i+1)*(degree+1)+q] * ( 1.0 - lgwt[0][q] )
+                        - 2.0 * ave_source );
         }
     }
     
@@ -152,12 +174,12 @@ int main(int, char**)
   // keep this file clean for each PR
   // allows someone to easily come here, dump code and start playing
   // this is good for prototyping and quick-testing features/behavior
-    
-    int    const N_elements = 16;
+
+    int    const N_elements = 128;
     int    const N_nodes    = N_elements + 1;
     int    const degree     = 2;
-    double const x_min = 0.0;
-    double const x_max = 1.0;
+    double const x_min = - 2.0 * M_PI;
+    double const x_max =   2.0 * M_PI;
     double const phi_min = 0.0;
     double const phi_max = 0.0;
     fk :: vector<prec> poisson_source((degree+1)*N_elements);
@@ -194,14 +216,14 @@ int main(int, char**)
             
             x[k] = x_e[i] + 0.5 * dx * ( 1.0 + x_q );
             
-            poisson_source[k] = sin( 2.0 * M_PI * x[k] );
+            poisson_source[k] = 0.5 * ( 1.0 - 0.5 * cos( 0.5 * x[k] ) ) - 1.0;
             
         }
     }
     
     poisson_solver
     ( poisson_source, poisson_phi, poisson_E, degree, N_elements,
-      x_min, x_max, phi_min, phi_max );
+      x_min, x_max, phi_min, phi_max, poisson_bc::periodic );
     
     std::cout << "---- x ----\n";
     for ( int i = 0; i < N_elements; i++ )
@@ -229,11 +251,25 @@ int main(int, char**)
             
             std::cout << poisson_phi[k] << "\n";
             
-            error += pow(poisson_phi[k]-sin(2.0*M_PI*x[k])/pow(2.0*M_PI,2),2);
+            error += pow( poisson_phi[k] + (1.0+cos(0.5*x[k])), 2 );
             
         }
         
     }
+    
+    std::cout << "---- E ----\n";
+    for ( int i = 0; i < N_elements; i++ )
+    {
+        for ( int q = 0; q < degree+1; q++ )
+        {
+        
+            int k = i*(degree+1)+q;
+        
+            std::cout << poisson_E[k] << "\n";
+            
+        }
+    }
+    
     std::cout << "-----------\n";
     
     error = sqrt( error ) / ( (degree+1)*N_elements );
