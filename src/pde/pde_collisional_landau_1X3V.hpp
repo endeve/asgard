@@ -31,7 +31,7 @@ public:
 private:
   static int constexpr num_dims_               = 4;
   static int constexpr num_sources_            = 0;
-  static int constexpr num_terms_              = 6;
+  static int constexpr num_terms_              = 5;
   static bool constexpr do_poisson_solve_      = true;
   static bool constexpr do_collision_operator_ = true;
   static bool constexpr has_analytic_soln_     = false;
@@ -222,6 +222,7 @@ private:
   // Term 1
   // -v\cdot\grad_x f for v > 0
   //
+  
   static P e1_g1(P const x, P const time = 0)
   {
     ignore(x);
@@ -335,27 +336,27 @@ private:
 
   inline static term<P> const term_e2x =
       term<P>(false,  // time-dependent
-              "E2_x", // name
+              "e2_x", // name
               {e2_pterm_x}, imex_flag::imex_explicit);
 
   inline static term<P> const term_e2v1 =
       term<P>(false,  // time-dependent
-              "E2_v1", // name
+              "e2_v1", // name
               {e2_pterm_v1}, imex_flag::imex_explicit);
 
   inline static term<P> const term_e2v2 =
       term<P>(false,  // time-dependent
-              "E2_v2", // name
+              "e2_v2", // name
               {e2_pterm_v2}, imex_flag::imex_explicit);
 
   inline static term<P> const term_e2v3 =
       term<P>(false,  // time-dependent
-              "E2_v3", // name
+              "e2_v3", // name
               {e2_pterm_v3}, imex_flag::imex_explicit);
 
   inline static std::vector<term<P>> const terms_2 = {term_e2x, term_e2v1, term_e2v2, term_e2v3};
 
-  // Term 3
+  // Term 3 (e3)
   // Central Part of E\cdot\grad_v f
   //
 
@@ -372,27 +373,52 @@ private:
     ignore(time);
     return -1.0;
   }
+  
+  static P posOne(P const x, P const time = 0)
+  {
+    ignore(x);
+    ignore(time);
+    return 1.0;
+  }
 
-  inline static const partial_term<P> pterm_E_mass_x = partial_term<P>(
+  inline static const partial_term<P> e3_pterm_x = partial_term<P>(
       coefficient_type::mass, E_func, nullptr, flux_type::central,
       boundary_condition::periodic, boundary_condition::periodic);
 
-  inline static term<P> const E_mass_x =
-      term<P>(true, // time-dependent
-              "",   // name
-              {pterm_E_mass_x}, imex_flag::imex_explicit);
-
-  inline static const partial_term<P> pterm_div_v = partial_term<P>(
+  inline static const partial_term<P> e3_pterm_v1 = partial_term<P>(
       coefficient_type::div, negOne, nullptr, flux_type::central,
       boundary_condition::dirichlet, boundary_condition::dirichlet,
       homogeneity::homogeneous, homogeneity::homogeneous);
 
-  inline static term<P> const div_v =
-      term<P>(false, // time-dependent
-              "",    // name
-              {pterm_div_v}, imex_flag::imex_explicit);
+  inline static const partial_term<P> e3_pterm_v2 = partial_term<P>(
+      coefficient_type::mass, posOne, nullptr, flux_type::central,
+      boundary_condition::periodic, boundary_condition::periodic);
 
-  inline static std::vector<term<P>> const terms_3 = {E_mass_x, div_v};
+  inline static const partial_term<P> e3_pterm_v3 = partial_term<P>(
+      coefficient_type::mass, posOne, nullptr, flux_type::central,
+      boundary_condition::periodic, boundary_condition::periodic);
+
+  inline static term<P> const term_e3_x =
+      term<P>(true,        // time-dependent
+              "term_e3_x", // name
+              {e3_pterm_x}, imex_flag::imex_explicit);
+
+  inline static term<P> const term_e3_v1 =
+      term<P>(false,        // time-dependent
+              "term_e3_v1", // name
+              {e3_pterm_v1}, imex_flag::imex_explicit);
+
+  inline static term<P> const term_e3_v2 =
+      term<P>(false,        // time-dependent
+              "term_e3_v2", // name
+              {e3_pterm_v2}, imex_flag::imex_explicit);
+
+  inline static term<P> const term_e3_v3 =
+      term<P>(false,        // time-dependent
+              "term_e3_v3", // name
+              {e3_pterm_v3}, imex_flag::imex_explicit);
+
+  inline static std::vector<term<P>> const terms_3 = {term_e3_x, term_e3_v1, term_e3_v2, term_e3_v3};
 
   // Term 4 + 5
   // Penalty Part of E\cdot\grad_v f
@@ -405,17 +431,15 @@ private:
     return param->value(x, time);
   }
 
-  static P posOne(P const x, P const time = 0)
-  {
-    ignore(x);
-    ignore(time);
-    return 1.0;
-  }
-
   inline static const partial_term<P> pterm_MaxAbsE_mass_x = partial_term<P>(
       coefficient_type::mass, MaxAbsE_func, nullptr, flux_type::central,
       boundary_condition::periodic, boundary_condition::periodic);
 
+  inline static const partial_term<P> pterm_div_v_downwind = partial_term<P>(
+      coefficient_type::div, posOne, nullptr, flux_type::downwind,
+      boundary_condition::dirichlet, boundary_condition::dirichlet,
+      homogeneity::homogeneous, homogeneity::homogeneous);
+      
   inline static term<P> const MaxAbsE_mass_x_1 =
       term<P>(true, // time-dependent
               "",   // name
@@ -425,23 +449,21 @@ private:
       term<P>(true, // time-dependent
               "",   // name
               {pterm_MaxAbsE_mass_x}, imex_flag::imex_explicit);
-
-  inline static const partial_term<P> pterm_div_v_downwind = partial_term<P>(
-      coefficient_type::div, posOne, nullptr, flux_type::downwind,
-      boundary_condition::dirichlet, boundary_condition::dirichlet,
-      homogeneity::homogeneous, homogeneity::homogeneous);
+              // Why exactly the same as MaxAbsE_mass_x_1?
 
   inline static term<P> const div_v_downwind =
       term<P>(false, // time-dependent
               "",    // name
               {pterm_div_v_downwind}, imex_flag::imex_explicit);
 
-  // Central Part Defined Above (div_v; can do this due to time independence)
+  // Central Part Defined in Term 3 Above (term_e3_v1; can do this due to time independence)
 
   inline static std::vector<term<P>> const terms_4 = {MaxAbsE_mass_x_1,
-                                                      div_v_downwind};
+                                                      div_v_downwind,
+                                                      term_e3_v2, term_e3_v3};
 
-  inline static std::vector<term<P>> const terms_5 = {MaxAbsE_mass_x_2, div_v};
+  inline static std::vector<term<P>> const terms_5 = {MaxAbsE_mass_x_2, term_e3_v1,
+                                                      term_e3_v2, term_e3_v3};
 
   // Terms 3 - 5 from vlasov_lb_full_f PDE:
 
@@ -580,9 +602,7 @@ private:
 
   inline static std::vector<term<P>> const terms_8 = {term_i3x, term_i3v};
 
-  // terms 6, 7, 8 are terms 3,4,5 from vlasov_lb_full_f
-  inline static term_set<P> const terms_ = {terms_1, terms_2, terms_3,
-                                            terms_6, terms_7, terms_8};
+  inline static term_set<P> const terms_ = {terms_1, terms_2, terms_3, terms_4, terms_5};
 
   inline static std::vector<vector_func<P>> const exact_vector_funcs_ = {};
   inline static scalar_func<P> const exact_scalar_func_               = {};
