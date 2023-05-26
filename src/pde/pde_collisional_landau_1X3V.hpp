@@ -38,7 +38,7 @@ private:
   static int constexpr default_degree          = 3;
 
   static P constexpr nu       = 1.0;    // collision frequency
-  static P constexpr A        = 1.0e-4; // amplitude
+  static P constexpr A        = 0.0e-4; // amplitude
   static P constexpr theta_in = 1.0;    // initial temperature
 
   static fk::vector<P>
@@ -216,6 +216,8 @@ private:
     ignore(x);
     return 0.0;
   }
+
+  /* TODO: Make identity term for reuse */
 
   /* build the terms */
 
